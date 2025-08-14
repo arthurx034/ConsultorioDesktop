@@ -1,11 +1,13 @@
+package model;
+
 public class Paciente {
-    private String nome;
-    private int idade
-    private String cpf;
+    public String nome;
+    public int idade;
+    public String cpf;
 
     public Paciente(String nome, int idade, String cpf) {
         this.nome = nome;
-        this.idade = idade
+        this.idade = idade;
         this.cpf = cpf;
     }
 
@@ -18,7 +20,7 @@ public class Paciente {
     }
 
     public int getIdade() {
-        return idade
+        return idade;
     }
 
     public void setIdade(int idade) {
@@ -30,6 +32,6 @@ public class Paciente {
     }
 
     public void setCpf(String cpf) {
-        this.cpf = cpf
+        this.cpf = cpf;
     }
 }
