@@ -1,8 +1,8 @@
 package model;
 
-import model.Medico;
 
 public class Consulta {
+    private long id;
     private Paciente paciente;
     private Medico medico;
     private String dataConsulta;
