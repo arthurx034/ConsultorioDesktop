@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourcePerFileMappings">
-    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/0098f3a1-6ced-4bd5-850c-46aa15a13063/console.sql" value="0098f3a1-6ced-4bd5-850c-46aa15a13063" />
+    <file url="file://$PROJECT_DIR$/src/dao/ConsultaDAO.java" value="0098f3a1-6ced-4bd5-850c-46aa15a13063" />
+    <file url="file://$PROJECT_DIR$/src/view/Main.java" value="0098f3a1-6ced-4bd5-850c-46aa15a13063" />
   </component>
 </project>

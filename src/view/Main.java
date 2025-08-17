@@ -1,10 +1,15 @@
 package view;
 
+import dao.ConsultaDAO;
+import model.Consulta;
 import model.Medico;
 import model.Paciente;
-import model.Consulta;
 
+import java.sql.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 
@@ -12,33 +17,53 @@ public class Main {
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
+        ConsultaDAO consultaDAO = new ConsultaDAO();
 
-        List<Medico> medicos = List.of(
-                new Medico("Dr. Silva", "Cardiologia", "123456789"),
-                new Medico("Dra. Souza", "Pediatria", "987654321"),
-                new Medico("Dr. Oliveira", "Ortopedia", "456789123")
-        );
+        System.out.println("=== SISTEMA DE CONSULTAS MÉDICAS ===");
 
-        List<Consulta> consultas = new ArrayList<>();
+        // --- 1. Listar médicos do banco ---
+        List<Medico> medicos = new ArrayList<>();
+        try (Connection conn = dao.DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT id, nome, especialidade, crm FROM medico")) {
 
-        System.out.println("Digite o nome do paciente:");
+            while (rs.next()) {
+                medicos.add(new Medico(
+                        rs.getLong("id"),
+                        rs.getString("nome"),
+                        rs.getString("especialidade"),
+                        rs.getString("crm")
+                ));
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Erro ao carregar médicos do banco: " + e.getMessage());
+            return;
+        }
+
+        if (medicos.isEmpty()) {
+            System.out.println("Nenhum médico cadastrado no banco. Cadastre médicos primeiro.");
+            return;
+        }
+
+        // --- 2. Cadastro do paciente ---
+        System.out.print("Digite o nome do paciente: ");
         String nome = sc.nextLine();
 
-        System.out.println("Digite a idade do paciente:");
+        System.out.print("Digite a idade do paciente: ");
         int idade = sc.nextInt();
-        sc.nextLine(); // consumir quebra de linha pendente
+        sc.nextLine();
 
-        System.out.println("Digite o cpf do paciente:");
+        System.out.print("Digite o CPF do paciente: ");
         String cpf = sc.nextLine();
 
         Paciente paciente = new Paciente(nome, idade, cpf);
 
+        // --- 3. Escolha do médico ---
         System.out.println("\nQual médico você deseja consultar?");
-        for (int i = 0; i < medicos.size(); i++) {
-            Medico medico = medicos.get(i);
-            System.out.println(i + " - Nome: " + medico.getNome() +
-                    ", Especialidade: " + medico.getEspecialidade() +
-                    ", CRM: " + medico.getCrm());
+        for (int i = 1; i < medicos.size(); i++) {
+            Medico m = medicos.get(i);
+            System.out.println(i + " - " + m.getNome() + " (" + m.getEspecialidade() + ") - CRM: " + m.getCrm());
         }
 
         int medicoEscolhido;
@@ -46,24 +71,59 @@ public class Main {
             System.out.print("Digite o número do médico: ");
             medicoEscolhido = sc.nextInt();
             sc.nextLine(); // consumir quebra de linha
-            if (medicoEscolhido >= 0 && medicoEscolhido < medicos.size()) {
-                break;
-            }
+            if (medicoEscolhido >= 0 && medicoEscolhido < medicos.size()) break;
             System.out.println("Opção inválida, tente novamente.");
         }
 
-        System.out.println("Qual data você deseja agendar a consulta? (dd/mm/yyyy)");
-        String dataConsulta = sc.nextLine();
+        // --- 4. Data da consulta ---
+        System.out.print("Qual data deseja agendar a consulta? (dd/MM/yyyy): ");
+        String dataInput = sc.nextLine();
 
+        String dataConsulta;
+        try {
+            // Converte do formato do usuário (dd/MM/yyyy) para o formato MySQL (yyyy-MM-dd)
+            Date data = new SimpleDateFormat("dd/MM/yyyy").parse(dataInput);
+            dataConsulta = new SimpleDateFormat("yyyy-MM-dd").format(data);
+        } catch (ParseException e) {
+            System.out.println("Formato de data inválido! Use dd/MM/yyyy");
+            return;
+        }
+
+        // --- 5. Criar e salvar a consulta ---
         Consulta consulta = new Consulta(paciente, medicos.get(medicoEscolhido), dataConsulta);
-        consultas.add(consulta);
+        consultaDAO.salvarConsulta(consulta);
 
         System.out.println("\nConsulta agendada com sucesso!");
-        System.out.println("Consultas agendadas: ");
-        for (Consulta c : consultas) {
-            System.out.println("Paciente: " + c.getPaciente().getNome() +
-                    ", Médico: " + c.getMedico().getNome() +
-                    ", Data: " + c.getDataConsulta());
+
+        // --- 6. Buscar todas as consultas do paciente no banco ---
+        System.out.println("\nConsultas do paciente " + paciente.getNome() + ":");
+        try (Connection conn = dao.DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT c.data_consulta, m.nome AS medico_nome, m.especialidade " +
+                             "FROM consulta c " +
+                             "JOIN medico m ON c.medico_id = m.id " +
+                             "JOIN paciente p ON c.paciente_id = p.id " +
+                             "WHERE p.cpf = ? " +
+                             "ORDER BY c.data_consulta")) {
+
+            stmt.setString(1, paciente.getCpf());
+            ResultSet rs = stmt.executeQuery();
+
+            boolean hasConsultas = false;
+            while (rs.next()) {
+                hasConsultas = true;
+                String data = rs.getString("data_consulta");
+                String nomeMedico = rs.getString("medico_nome");
+                String especialidade = rs.getString("especialidade");
+                System.out.println(data + " - " + nomeMedico + " (" + especialidade + ")");
+            }
+
+            if (!hasConsultas) {
+                System.out.println("Nenhuma consulta encontrada para este paciente.");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Erro ao buscar consultas do paciente: " + e.getMessage());
         }
 
         sc.close();
