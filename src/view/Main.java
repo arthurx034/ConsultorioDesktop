@@ -1,6 +1,7 @@
 package view;
 
 import dao.ConsultaDAO;
+import dao.DatabaseConnection;
 import model.Consulta;
 import model.Medico;
 import model.Paciente;
@@ -23,7 +24,7 @@ public class Main {
 
         // --- 1. Listar médicos do banco ---
         List<Medico> medicos = new ArrayList<>();
-        try (Connection conn = dao.DatabaseConnection.getConnection();
+        try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT id, nome, especialidade, crm FROM medico")) {
 
@@ -61,9 +62,9 @@ public class Main {
 
         // --- 3. Escolha do médico ---
         System.out.println("\nQual médico você deseja consultar?");
-        for (int i = 1; i < medicos.size(); i++) {
+        for (int i = 0; i < medicos.size(); i++) {
             Medico m = medicos.get(i);
-            System.out.println(i + " - " + m.getNome() + " (" + m.getEspecialidade() + ") - CRM: " + m.getCrm());
+            System.out.println(i + 1 + " - " + m.getNome() + " (" + m.getEspecialidade() + ") - CRM: " + m.getCrm());
         }
 
         int medicoEscolhido;
@@ -97,7 +98,7 @@ public class Main {
 
         // --- 6. Buscar todas as consultas do paciente no banco ---
         System.out.println("\nConsultas do paciente " + paciente.getNome() + ":");
-        try (Connection conn = dao.DatabaseConnection.getConnection();
+        try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "SELECT c.data_consulta, m.nome AS medico_nome, m.especialidade " +
                              "FROM consulta c " +
