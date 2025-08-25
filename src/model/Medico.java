@@ -6,7 +6,6 @@ public class Medico {
     private String especialidade;
     private String crm;
 
-    // Construtor completo (com ID)
     public Medico(Long id, String nome, String especialidade, String crm) {
         this.id = id;
         this.nome = nome;
@@ -14,11 +13,11 @@ public class Medico {
         this.crm = crm;
     }
 
-    // Construtor sem ID (antes de salvar no banco)
     public Medico(String nome, String especialidade, String crm) {
         this(null, nome, especialidade, crm);
     }
 
+    // Getters e setters
     public Long getId() {
         return id;
     }
@@ -53,11 +52,8 @@ public class Medico {
 
     @Override
     public String toString() {
-        return "Medico{" +
-                "id=" + id +
-                ", nome='" + nome + '\'' +
-                ", especialidade='" + especialidade + '\'' +
-                ", crm='" + crm + '\'' +
-                '}';
+        return "Dr(a). " + (nome != null ? nome : "N/A") +
+                " | Especialidade: " + (especialidade != null ? especialidade : "N/A") +
+                " | CRM: " + (crm != null ? crm : "N/A");
     }
 }

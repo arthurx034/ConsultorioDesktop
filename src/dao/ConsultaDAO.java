@@ -1,71 +1,98 @@
 package dao;
 
 import model.Consulta;
-import model.Medico;
-import model.Paciente;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ConsultaDAO {
 
-    public void salvarConsulta(Consulta consulta) {
-        try (Connection conn = DatabaseConnection.getConnection()) {
+    public boolean salvarConsulta(Consulta consulta) {
+        String sql = "INSERT INTO consulta (paciente_id, medico_id, data_consulta, cpf) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            conn.setAutoCommit(false); // Inicia transação
+            stmt.setLong(1, consulta.getPaciente().getId());
+            stmt.setLong(2, consulta.getMedico().getId());
+            stmt.setString(3, consulta.getDataConsulta());
+            stmt.setString(4, consulta.getCpf());
 
-            // --- 1. Verificar se paciente já existe pelo CPF ---
-            int pacienteId;
-            String sqlBuscarPaciente = "SELECT id FROM paciente WHERE cpf = ?";
-            try (PreparedStatement stmtBuscar = conn.prepareStatement(sqlBuscarPaciente)) {
-                stmtBuscar.setString(1, consulta.getPaciente().getCpf());
-                ResultSet rs = stmtBuscar.executeQuery();
-                if (rs.next()) {
-                    pacienteId = rs.getInt("id");
-                    System.out.println("Paciente já cadastrado. ID usado: " + pacienteId);
-                } else {
-                    // Se não existir, insere
-                    String sqlPaciente = "INSERT INTO paciente (nome, idade, cpf) VALUES (?, ?, ?)";
-                    try (PreparedStatement stmtPaciente = conn.prepareStatement(sqlPaciente, Statement.RETURN_GENERATED_KEYS)) {
-                        stmtPaciente.setString(1, consulta.getPaciente().getNome());
-                        stmtPaciente.setInt(2, consulta.getPaciente().getIdade());
-                        stmtPaciente.setString(3, consulta.getPaciente().getCpf());
-                        stmtPaciente.executeUpdate();
-
-                        ResultSet rsPaciente = stmtPaciente.getGeneratedKeys();
-                        rsPaciente.next();
-                        pacienteId = rsPaciente.getInt(1);
-                        System.out.println("Paciente cadastrado com sucesso. ID: " + pacienteId);
+            int linhas = stmt.executeUpdate();
+            if (linhas > 0) {
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        consulta.setId(rs.getLong(1));
                     }
                 }
+                return true;
             }
 
-            // --- 2. Obter médico existente pelo CRM ---
-            int medicoId;
-            String sqlMedico = "SELECT id FROM medico WHERE crm = ?";
-            try (PreparedStatement stmtMedico = conn.prepareStatement(sqlMedico)) {
-                stmtMedico.setString(1, consulta.getMedico().getCrm());
-                ResultSet rsMedico = stmtMedico.executeQuery();
-                if (rsMedico.next()) {
-                    medicoId = rsMedico.getInt("id");
-                } else {
-                    throw new SQLException("Médico não encontrado no banco: " + consulta.getMedico().getNome());
+        } catch (SQLException e) {
+            System.out.println("Erro ao salvar consulta: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public List<Consulta> listarConsultasPorPacienteRetorno(String cpf) {
+        List<Consulta> consultas = new ArrayList<>();
+        String sql = "SELECT c.id, c.data_consulta, c.paciente_id, c.medico_id, c.cpf, " +
+                "m.nome AS medico_nome, m.especialidade, p.nome AS paciente_nome " +
+                "FROM consulta c " +
+                "JOIN medico m ON c.medico_id = m.id " +
+                "JOIN paciente p ON c.paciente_id = p.id " +
+                "WHERE c.cpf = ? " +
+                "ORDER BY c.data_consulta";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, cpf);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    consultas.add(new Consulta(
+                            rs.getLong("id"),
+                            rs.getString("data_consulta"),
+                            rs.getString("paciente_nome"),
+                            rs.getString("medico_nome"),
+                            rs.getString("especialidade"),
+                            rs.getString("cpf")
+                    ));
                 }
             }
 
-            // --- 3. Salvar consulta ---
-            String sqlConsulta = "INSERT INTO consulta (paciente_id, medico_id, data_consulta) VALUES (?, ?, ?)";
-            try (PreparedStatement stmtConsulta = conn.prepareStatement(sqlConsulta)) {
-                stmtConsulta.setInt(1, pacienteId);
-                stmtConsulta.setInt(2, medicoId);
-                stmtConsulta.setString(3, consulta.getDataConsulta()); // yyyy-MM-dd
-                stmtConsulta.executeUpdate();
-            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao listar consultas: " + e.getMessage());
+        }
+        return consultas;
+    }
 
-            conn.commit(); // Confirma a transação
-            System.out.println("Consulta salva com sucesso!");
+    public boolean editarConsulta(long id, String novaData) {
+        String sql = "UPDATE consulta SET data_consulta = ? WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, novaData);
+            stmt.setLong(2, id);
+            return stmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Erro ao editar consulta: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean excluirConsulta(long id) {
+        String sql = "DELETE FROM consulta WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, id);
+            return stmt.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.out.println("Erro ao excluir consulta: " + e.getMessage());
+            return false;
         }
     }
 }
