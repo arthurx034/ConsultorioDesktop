@@ -6,7 +6,6 @@ public class Paciente {
     private int idade;
     private String cpf;
 
-    // Construtor completo (com ID)
     public Paciente(Long id, String nome, int idade, String cpf) {
         this.id = id;
         this.nome = nome;
@@ -14,7 +13,6 @@ public class Paciente {
         this.cpf = cpf;
     }
 
-    // Construtor sem ID (antes de salvar no banco)
     public Paciente(String nome, int idade, String cpf) {
         this(null, nome, idade, cpf);
     }
@@ -53,11 +51,8 @@ public class Paciente {
 
     @Override
     public String toString() {
-        return "Paciente{" +
-                "id=" + id +
-                ", nome='" + nome + '\'' +
-                ", idade=" + idade +
-                ", cpf='" + cpf + '\'' +
-                '}';
+        return "Paciente: " + (nome != null ? nome : "N/A") +
+                " | Idade: " + idade +
+                " | CPF: " + (cpf != null ? cpf : "N/A");
     }
 }
